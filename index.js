@@ -4,6 +4,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import axios from "axios";
 import dotenv from "dotenv";
 import express from "express";
+import cors from "cors";
 
 dotenv.config();
 
@@ -112,8 +113,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 const app = express();
+app.use(cors());
+app.use(express.json());
 
-let transport;
+// Request logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// Map to track active SSE transports
+const transports = new Map();
 
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
@@ -121,16 +131,29 @@ app.get("/health", (req, res) => {
 
 app.get("/sse", async (req, res) => {
   console.log("New SSE connection");
-  transport = new SSEServerTransport("/message", res);
+  const transport = new SSEServerTransport("/message", res);
+  
+  // Store transport by its sessionId
+  transports.set(transport.sessionId, transport);
+  
   await server.connect(transport);
+  
+  // Clean up when connection closes
+  res.on("close", () => {
+    console.log(`SSE connection closed: ${transport.sessionId}`);
+    transports.delete(transport.sessionId);
+  });
 });
 
 app.post("/message", async (req, res) => {
-  console.log("Received message via POST");
+  const sessionId = req.query.sessionId;
+  const transport = transports.get(sessionId);
+  
   if (transport) {
     await transport.handlePostMessage(req, res);
   } else {
-    res.status(400).send("No active SSE connection");
+    console.error(`Session not found: ${sessionId}`);
+    res.status(400).send("Session not found or expired");
   }
 });
 
