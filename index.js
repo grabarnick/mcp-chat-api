@@ -101,9 +101,8 @@ function setupHandlers(server) {
 
 const app = express();
 app.use(cors());
-app.use(express.json());
 
-// Request logging
+// Request logging (without body parsing)
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
@@ -149,9 +148,8 @@ app.post("/message", async (req, res) => {
   const sessionId = req.query.sessionId;
   const transport = transports.get(sessionId);
   
-  console.log(`Incoming message for session ${sessionId}:`, JSON.stringify(req.body));
-  
   if (transport) {
+    // SSEServerTransport.handlePostMessage will read the raw request body
     await transport.handlePostMessage(req, res);
   } else {
     console.error(`Session not found: ${sessionId}`);
