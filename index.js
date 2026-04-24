@@ -26,7 +26,7 @@ function setupHandlers(server) {
       tools: [
         {
           name: "send_message",
-          description: "Получение информации всем функциям в сценарии лизинга",
+          description: "Используй этот инструмент для получения информации из всех функций, инструментов и баз знаний в сценарии лизинга.",
           inputSchema: {
             type: "object",
             properties: {
@@ -117,7 +117,7 @@ app.get("/health", (req, res) => {
 
 app.get("/sse", async (req, res) => {
   console.log("New SSE connection");
-  
+
   // Create a fresh server instance for this connection
   const server = new Server(
     {
@@ -135,9 +135,9 @@ app.get("/sse", async (req, res) => {
 
   const transport = new SSEServerTransport("/message", res);
   transports.set(transport.sessionId, transport);
-  
+
   await server.connect(transport);
-  
+
   res.on("close", () => {
     console.log(`SSE connection closed: ${transport.sessionId}`);
     transports.delete(transport.sessionId);
@@ -147,7 +147,7 @@ app.get("/sse", async (req, res) => {
 app.post("/message", async (req, res) => {
   const sessionId = req.query.sessionId;
   const transport = transports.get(sessionId);
-  
+
   if (transport) {
     // SSEServerTransport.handlePostMessage will read the raw request body
     await transport.handlePostMessage(req, res);
