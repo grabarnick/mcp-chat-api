@@ -47,3 +47,4 @@ npm start
 The server uses **SSE (Server-Sent Events)** for MCP communication.
 - SSE endpoint: `http://localhost:3000/sse`
 - Message endpoint: `http://localhost:3000/message`
+- Health check: `http://localhost:3000/health`
