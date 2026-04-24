@@ -115,6 +115,10 @@ const app = express();
 
 let transport;
 
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.get("/sse", async (req, res) => {
   console.log("New SSE connection");
   transport = new SSEServerTransport("/message", res);
