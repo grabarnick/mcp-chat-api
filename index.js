@@ -149,6 +149,8 @@ app.post("/message", async (req, res) => {
   const sessionId = req.query.sessionId;
   const transport = transports.get(sessionId);
   
+  console.log(`Incoming message for session ${sessionId}:`, JSON.stringify(req.body));
+  
   if (transport) {
     await transport.handlePostMessage(req, res);
   } else {
