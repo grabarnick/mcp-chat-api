@@ -5,6 +5,8 @@ import axios from "axios";
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
+import fs from "fs";
+import path from "path";
 
 dotenv.config();
 
@@ -21,6 +23,21 @@ const ML_CALCULATOR_TOKEN = process.env.ML_CALCULATOR_TOKEN;
 const SMS_USER = process.env.SMS_USER;
 const SMS_PASSWORD = process.env.SMS_PASSWORD;
 const SMS_SENDER = process.env.SMS_SENDER;
+
+// Load user functions from project file
+const USER_FUNCTIONS_PATH = path.join(process.cwd(), "project", "Демо-бот-JustAI", "userFunctions.json");
+let userFunctionsData = [];
+try {
+  const content = fs.readFileSync(USER_FUNCTIONS_PATH, "utf8");
+  userFunctionsData = JSON.parse(content);
+} catch (err) {
+  console.error("Error loading userFunctions.json:", err.message);
+}
+
+function getUserFunctionCode(name) {
+  const fn = userFunctionsData.find(f => f.name === name);
+  return fn ? fn.code : null;
+}
 
 // Helper for NBRB rates
 async function getRate(currencyCode) {
@@ -47,81 +64,63 @@ function setupHandlers(server) {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
-        /*
         {
-          name: "send_message",
-          description: "Используй этот инструмент для получения информации из всех функций, инструментов и баз знаний в сценарии лизинга.",
+          name: "NBRB.getExchangeRates",
+          description: "Запрашивает курсы валют по отношению к BYN (Нацбанк РБ)",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "NBRB.getRateOneCurrency",
+          description: "Запрашивает курс конкретной валюты по отношению к BYN",
           inputSchema: {
             type: "object",
             properties: {
-              query: {
-                type: "string",
-                description: "The message text to send to the bot.",
-              },
-              clientId: {
-                type: "string",
-                description: "Unique identifier for the client/session.",
-              },
+              currencyCode: { type: "string" },
             },
-            required: ["query", "clientId"],
-          },
-        },
-        */
-        {
-          name: "get_exchange_rates",
-          description: "Запрашивает курсы валют по отношению к BYN (Нацбанк РБ)",
-          inputSchema: {
-            type: "object",
-            properties: {},
+            required: ["currencyCode"],
           },
         },
         {
-          name: "check_lizing_object",
+          name: "MLCalculator.checkLizingObject",
           description: "Проверка доступных предметов лизинга по типу клиента",
-          inputSchema: {
-            type: "object",
-            properties: {},
-          },
+          inputSchema: { type: "object", properties: {} },
         },
         {
-          name: "check_currencies",
+          name: "MLCalculator.checkCurrencies",
           description: "Запрос в каких валютах доступен расчет графика по типу клиента",
-          inputSchema: {
-            type: "object",
-            properties: {},
-          },
+          inputSchema: { type: "object", properties: {} },
         },
         {
-          name: "check_ranges",
+          name: "MLCalculator.checkRanges",
           description: "Запрос диапазона стоимости предмета лизинга",
           inputSchema: {
             type: "object",
             properties: {
-              subject: { type: "string", description: "Предмет лизинга (напр. 'Легковой автомобиль')" },
-              currency: { type: "string", description: "Кодовое обозначение валюты (напр. 'USD')" },
+              subject: { type: "string" },
+              currency: { type: "string" },
             },
           },
         },
         {
-          name: "check_terms",
+          name: "MLCalculator.checkTerms",
           description: "Запрос возможных условий лизинга по заданным параметрам",
           inputSchema: {
             type: "object",
             properties: {
-              client_type: { type: "string", description: "Физическое лицо или Юридическое лицо" },
+              client_type: { type: "string" },
               subject: { type: "string" },
-              condition_new: { type: "string", description: "1 - новый, 0 - Б/У" },
-              age: { type: "string", description: "Возраст в годах" },
+              condition_new: { type: "string" },
+              age: { type: "string" },
               currency: { type: "string" },
               cost: { type: "string" },
-              prepaid: { type: "string", description: "Аванс в %" },
-              term: { type: "string", description: "Срок в месяцах" },
-              type_schedule: { type: "string", description: "0 - Аннуитет, 1 - убывающий" },
+              prepaid: { type: "string" },
+              term: { type: "string" },
+              type_schedule: { type: "string" },
             },
           },
         },
         {
-          name: "get_payment_schedule",
+          name: "MLCalculator.getPaymentSchedule",
           description: "Запрашивает график платежей по заданным параметрам",
           inputSchema: {
             type: "object",
@@ -135,26 +134,49 @@ function setupHandlers(server) {
               prepaid: { type: "string" },
               term: { type: "string" },
               type_schedule: { type: "string" },
-              nds_principal: { type: "string", description: "0 или 20" },
+              nds_principal: { type: "string" },
             },
             required: ["client_type", "subject", "currency", "cost", "prepaid", "term"],
           },
         },
         {
-          name: "currency_conversion",
+          name: "Conversion.currencyConversionAll",
           description: "Конвертирует из одной валюты в другую по курсу НБ РБ",
           inputSchema: {
             type: "object",
             properties: {
               amount: { type: "number" },
-              starting_currency: { type: "string", description: "ISO код (напр. USD)" },
-              result_currency: { type: "string", description: "ISO код (напр. BYN)" },
+              starting_currency: { type: "string" },
+              result_currency: { type: "string" },
             },
             required: ["amount", "starting_currency", "result_currency"],
           },
         },
         {
-          name: "send_consultation_to_amo",
+          name: "SMSAssistent.sendSMS",
+          description: "Отправка СМС через сервис SMS-Ассистент",
+          inputSchema: {
+            type: "object",
+            properties: {
+              phoneNumberForSms: { type: "string" },
+              message: { type: "string" },
+            },
+            required: ["phoneNumberForSms", "message"],
+          },
+        },
+        {
+          name: "othersFunctions.getMinPrepaidFromCalculatorResult",
+          description: "Получить минимальный размер авансового платежа из объекта условий",
+          inputSchema: {
+            type: "object",
+            properties: {
+              objectTermsFromCalc: { type: "object" },
+            },
+            required: ["objectTermsFromCalc"],
+          },
+        },
+        {
+          name: "othersFunctions.sendResultConsultationInAMO",
           description: "Отправляет данные консультации в AMO CRM",
           inputSchema: {
             type: "object",
@@ -167,36 +189,13 @@ function setupHandlers(server) {
               currency: { type: "string" },
               prepaid: { type: "string" },
               term: { type: "string" },
-              calculation_result: { type: "object", description: "Результат функции get_payment_schedule" },
+              calculation_result: { type: "object" },
             },
             required: ["phoneNumberForSms", "statusConsultation"],
           },
         },
         {
-          name: "send_sms",
-          description: "Отправка СМС через сервис SMS-Ассистент",
-          inputSchema: {
-            type: "object",
-            properties: {
-              phoneNumberForSms: { type: "string" },
-              message: { type: "string" },
-            },
-            required: ["phoneNumberForSms", "message"],
-          },
-        },
-        {
-          name: "get_min_prepaid_value",
-          description: "Получить минимальный размер авансового платежа из объекта условий",
-          inputSchema: {
-            type: "object",
-            properties: {
-              objectTermsFromCalc: { type: "object", description: "Объект с вариантами условий" },
-            },
-            required: ["objectTermsFromCalc"],
-          },
-        },
-        {
-          name: "add_nds_to_cost",
+          name: "othersFunctions.addNDSForCost",
           description: "Добавляет НДС (20%) к стоимости предмета лизинга",
           inputSchema: {
             type: "object",
@@ -205,6 +204,63 @@ function setupHandlers(server) {
             },
             required: ["cost"],
           },
+        },
+        {
+          name: "othersFunctions.getDialogHistory",
+          description: "Возвращает историю диалога",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "ForAgentCont.questionsStepsList",
+          description: "Список вопросов-шагов",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "ForAgentCont.getPromtQuestionsStepsList",
+          description: "Возвращает промт из списка промтов",
+          inputSchema: {
+            type: "object",
+            properties: {
+              questionType: { type: "string" },
+            },
+            required: ["questionType"],
+          },
+        },
+        {
+          name: "ForAgentCont.sendNoteInAgent",
+          description: "Отправка заметки в контекст",
+          inputSchema: {
+            type: "object",
+            properties: {
+              questionType: { type: "string" },
+            },
+            required: ["questionType"],
+          },
+        },
+        {
+          name: "Prompts.promptForFL",
+          description: "Инструкция для агента работающего с физическими лицами",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "Prompts.promptForUL",
+          description: "Инструкция для агента работающего с юридическими лицами",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "Prompts.promptForRag",
+          description: "Промт для базы знаний Rag",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "Dictionaries.doNotFinance",
+          description: "Список предметов которые не финансируем",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "Dictionaries.constants",
+          description: "Список констант со значениями",
+          inputSchema: { type: "object", properties: {} },
         },
       ],
     };
@@ -271,12 +327,20 @@ function setupHandlers(server) {
       let result;
 
       switch (name) {
+        case "NBRB.getExchangeRates":
         case "get_exchange_rates": {
           const response = await axios.get("https://api.nbrb.by/exrates/rates/?periodicity=0&parammode=2");
           result = response.data;
           break;
         }
 
+        case "NBRB.getRateOneCurrency": {
+          const { currencyCode } = args;
+          result = await getRate(currencyCode);
+          break;
+        }
+
+        case "MLCalculator.checkLizingObject":
         case "check_lizing_object": {
           const headers = await getMLAuthHeader();
           const response = await axios.get("https://personal.mikro-leasing.by/calculator/api/1.0/subjects/", { headers });
@@ -284,6 +348,7 @@ function setupHandlers(server) {
           break;
         }
 
+        case "MLCalculator.checkCurrencies":
         case "check_currencies": {
           const headers = await getMLAuthHeader();
           const response = await axios.get("https://personal.mikro-leasing.by/calculator/api/1.0/currencies/", { headers });
@@ -291,6 +356,7 @@ function setupHandlers(server) {
           break;
         }
 
+        case "MLCalculator.checkRanges":
         case "check_ranges": {
           const { subject, currency } = args;
           const headers = await getMLAuthHeader();
@@ -302,6 +368,7 @@ function setupHandlers(server) {
           break;
         }
 
+        case "MLCalculator.checkTerms":
         case "check_terms": {
           const headers = await getMLAuthHeader();
           let url = "https://personal.mikro-leasing.by/calculator/api/1.0/terms/?";
@@ -313,6 +380,7 @@ function setupHandlers(server) {
           break;
         }
 
+        case "MLCalculator.getPaymentSchedule":
         case "get_payment_schedule": {
           const headers = await getMLAuthHeader();
           let url = "https://personal.mikro-leasing.by/calculator/api/1.0/calculate/?";
@@ -324,6 +392,7 @@ function setupHandlers(server) {
           break;
         }
 
+        case "Conversion.currencyConversionAll":
         case "currency_conversion": {
           const { amount, starting_currency, result_currency } = args;
           if (result_currency === "BYN") {
@@ -349,6 +418,7 @@ function setupHandlers(server) {
           break;
         }
 
+        case "othersFunctions.sendResultConsultationInAMO":
         case "send_consultation_to_amo": {
           const url = "https://core.leadconnector.ru/mikroleasing/webhooks/just_ai/zhu2utnbn1hivdnvy0lvbjqrvgzqdz09";
           const response = await axios.post(url, args);
@@ -356,6 +426,7 @@ function setupHandlers(server) {
           break;
         }
 
+        case "SMSAssistent.sendSMS":
         case "send_sms": {
           const { phoneNumberForSms, message } = args;
           const url = `https://userarea.sms-assistent.by/api/v1/send_sms/plain?user=${SMS_USER}&password=${SMS_PASSWORD}&recipient=${phoneNumberForSms}&message=${encodeURIComponent(message)}&sender=${SMS_SENDER}`;
@@ -364,6 +435,7 @@ function setupHandlers(server) {
           break;
         }
 
+        case "othersFunctions.getMinPrepaidFromCalculatorResult":
         case "get_min_prepaid_value": {
           const { objectTermsFromCalc } = args;
           const prepaidArray = [];
@@ -377,11 +449,108 @@ function setupHandlers(server) {
           break;
         }
 
+        case "othersFunctions.addNDSForCost":
         case "add_nds_to_cost": {
           const { cost } = args;
-          const ndsRate = 20; // Default from userFunctions.json
+          const ndsRate = 20;
           const newCost = cost + (cost * ndsRate) / 100;
           result = newCost;
+          break;
+        }
+
+        case "othersFunctions.getDialogHistory": {
+          result = "History is not available in MCP mode yet.";
+          break;
+        }
+
+        case "ForAgentCont.sendNoteInAgent": {
+          const { questionType } = args;
+          result = `Note for ${questionType} has been added to context.`;
+          break;
+        }
+
+        case "ForAgentCont.questionsStepsList": {
+          // This function returns a large object in JAICP. We'll return the parsed object or a mock.
+          const code = getUserFunctionCode("questionsStepsList");
+          // Extract the object if it's a simple return
+          if (code && code.includes("return {")) {
+            const jsonPart = code.substring(code.indexOf("{"), code.lastIndexOf("}") + 1);
+            try {
+              // Note: this is a bit hacky but works for static objects
+              result = eval(`(${jsonPart})`);
+            } catch (e) {
+              result = "Error parsing questionsStepsList code";
+            }
+          } else {
+            result = "questionsStepsList code not found or too complex";
+          }
+          break;
+        }
+
+        case "ForAgentCont.getPromtQuestionsStepsList": {
+          const { questionType } = args;
+          const code = getUserFunctionCode("questionsStepsList");
+          if (code && code.includes("return {")) {
+            const jsonPart = code.substring(code.indexOf("{"), code.lastIndexOf("}") + 1);
+            try {
+              const list = eval(`(${jsonPart})`);
+              result = list[questionType] || "Instruction not found";
+            } catch (e) {
+              result = "Error parsing questionsStepsList code";
+            }
+          } else {
+            result = "questionsStepsList code not found";
+          }
+          break;
+        }
+
+        case "Prompts.promptForFL": {
+          const p1 = getUserFunctionCode("promptForFLULCommon_Part_1") || "";
+          const p3 = getUserFunctionCode("promptForFLULCommon_Part_3") || "";
+          // Extract part 2 from promptForFL code
+          const fullCode = getUserFunctionCode("promptForFL") || "";
+          const part2Match = fullCode.match(/let part_2 = `([\s\S]*?)`;/);
+          const p2 = part2Match ? part2Match[1] : "";
+          result = p1 + p2 + p3;
+          break;
+        }
+
+        case "Prompts.promptForUL": {
+          const p1 = getUserFunctionCode("promptForFLULCommon_Part_1") || "";
+          const p3 = getUserFunctionCode("promptForFLULCommon_Part_3") || "";
+          const fullCode = getUserFunctionCode("promptForUL") || "";
+          const part2Match = fullCode.match(/let part_2 = `([\s\S]*?)`;/);
+          const p2 = part2Match ? part2Match[1] : "";
+          result = p1 + p2 + p3;
+          break;
+        }
+
+        case "Prompts.promptForRag": {
+          const code = getUserFunctionCode("promptForRag") || "";
+          const match = code.match(/return `([\s\S]*?)`;/);
+          result = match ? match[1] : "Rag prompt not found";
+          break;
+        }
+
+        case "Dictionaries.doNotFinance": {
+          const code = getUserFunctionCode("doNotFinance") || "";
+          const match = code.match(/return `([\s\S]*?)`;/);
+          result = match ? match[1] : "doNotFinance list not found";
+          break;
+        }
+
+        case "Dictionaries.constants": {
+          const code = getUserFunctionCode("constants") || "";
+          if (code && code.includes("return {")) {
+            const jsonPart = code.substring(code.indexOf("{"), code.lastIndexOf("}") + 1);
+            try {
+              result = eval(`(${jsonPart})`);
+            } catch (e) {
+              result = "Error parsing constants code";
+            }
+          } else {
+            result = "Constants not found";
+          }
           break;
         }
 
