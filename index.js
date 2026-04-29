@@ -592,7 +592,7 @@ function setupHandlers(server) {
       tools: [
         {
           name: "send_message",
-          description: "Запрашивает информацию из базы знаний JAICP по заданному вопросу",
+          description: "Запрашивает информацию из базы знаний по заданному вопросу",
           inputSchema: {
             type: "object",
             properties: {
@@ -820,7 +820,7 @@ function setupHandlers(server) {
         const botData = response.data || {};
         let botAnswer = botData.answer || "";
 
-        if (!botAnswer && botData.replies) {
+        if (botData.replies) {
           botAnswer = botData.replies
             .filter((reply) => reply.type === "text")
             .map((reply) => reply.text)
