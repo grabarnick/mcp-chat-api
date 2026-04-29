@@ -817,7 +817,12 @@ function setupHandlers(server) {
           clientId,
         });
 
-        const botData = response.data || {};
+        const responseData = response.data || {};
+        // Some JAICP responses have the actual data in a 'data' field
+        const botData = responseData.data || responseData;
+
+        console.log("JAICP Response Structure:", JSON.stringify(responseData, null, 2));
+
         let botAnswer = botData.answer || "";
 
         if (botData.replies) {
@@ -827,7 +832,7 @@ function setupHandlers(server) {
             .join("\n");
         }
 
-        if (!botAnswer) {
+        if (!botAnswer && !botData.replies) {
           botAnswer = "Информация не найдена в базе знаний.";
         }
 
