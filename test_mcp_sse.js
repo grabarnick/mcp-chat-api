@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { EventSource } from 'eventsource';
 
-const baseUrl = 'http://localhost:3000';
+const baseUrl = 'https://256760445-just-ai-leasing-4.app.caila.io';
 
 async function test() {
   console.log('Connecting to SSE...');
@@ -21,6 +21,20 @@ async function test() {
     console.log('Got endpoint:', messageUrl);
 
     try {
+      console.log('Sending initialize call...');
+      const initRes = await axios.post(messageUrl, {
+        jsonrpc: '2.0',
+        id: 0,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'test-client-xxx', version: '1.0.0' }
+        }
+      });
+      console.log('Initialize response raw:', JSON.stringify(initRes.data, null, 2));
+      console.log('Initialize response:', JSON.stringify(initRes.data.result?.serverInfo, null, 2));
+
       console.log('Sending tool call...');
       await axios.post(messageUrl, {
         jsonrpc: '2.0',
@@ -30,7 +44,7 @@ async function test() {
           name: 'send_message',
           arguments: {
             query: 'адреса офисов в Беларуси',
-            clientId: 'random-user-123'
+            clientId: 'test-client-xxx'
           }
         }
       });
