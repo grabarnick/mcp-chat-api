@@ -832,7 +832,7 @@ function setupHandlers(server) {
             .join("\n");
         }
 
-        if (!botAnswer && !botData.replies) {
+        if (!botAnswer && (!botData.replies || botData.replies.length === 0)) {
           botAnswer = "Информация не найдена в базе знаний.";
         }
 

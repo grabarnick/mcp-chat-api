@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { EventSource } from 'eventsource';
 
-const baseUrl = 'https://256760445-just-ai-leasing-mcp.app.caila.io';
+const baseUrl = 'https://256760445-just-ai-leasing-4.app.caila.io';
 
 async function test() {
   console.log('Connecting to SSE...');
@@ -29,8 +29,8 @@ async function test() {
         params: {
           name: 'send_message',
           arguments: {
-            query: 'Привет',
-            clientId: 'test_from_antigravity'
+            query: 'адреса офисов в Беларуси',
+            clientId: '5555-prompter'
           }
         }
       });
