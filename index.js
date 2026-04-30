@@ -842,6 +842,10 @@ function setupHandlers(server) {
               type: "text",
               text: botAnswer,
             },
+            {
+              type: "text",
+              text: `DEBUG_INFO: host=${JAICP_HOST}, replies_count=${botData.replies?.length || 0}, answer_present=${!!botData.answer}`,
+            },
           ],
         };
       } catch (error) {
@@ -1087,7 +1091,7 @@ app.get("/sse", async (req, res) => {
   const server = new Server(
     {
       name: "jaicp-chat",
-      version: "1.0.0",
+      version: "1.0.1-fixed-parsing",
     },
     {
       capabilities: {
